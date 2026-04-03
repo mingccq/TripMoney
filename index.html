@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#F9A842" />
+  <title>TripMoney</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- 匯率換算 -->
+    <main id="view-rate" class="view" aria-hidden="false">
+      <header class="header header--orange">
+        <h1 class="header__title">匯率換算小工具</h1>
+      </header>
+
+      <section class="card card--overlap">
+        <h2 class="card__label">掃描價格標籤</h2>
+        <div class="scan-actions">
+          <button type="button" class="btn btn--primary" id="btn-camera-start">開啟相機掃描</button>
+          <button type="button" class="btn btn--muted" id="btn-camera-stop" disabled>停止掃描</button>
+        </div>
+        <div id="camera-wrap" class="camera-wrap hidden">
+          <video id="video" playsinline autoplay muted></video>
+          <canvas id="canvas-capture" class="hidden"></canvas>
+          <p class="scan-hint">將標籤對準畫面，點「辨識數字」擷取價格</p>
+          <button type="button" class="btn btn--primary btn--block" id="btn-ocr">辨識數字</button>
+          <p id="ocr-status" class="ocr-status" role="status"></p>
+        </div>
+      </section>
+
+      <section class="convert-panel">
+        <div class="field-row">
+          <span class="field-row__label">從</span>
+          <input type="text" inputmode="decimal" class="input-amount" id="amount-from" placeholder="0" autocomplete="off" />
+          <select class="select-ccy" id="ccy-from" aria-label="來源幣別"></select>
+        </div>
+        <button type="button" class="btn-swap" id="btn-swap" title="交換幣別" aria-label="交換幣別">
+          <span class="btn-swap__arrows">⇅</span>
+        </button>
+        <div class="field-row">
+          <span class="field-row__label">到</span>
+          <input type="text" inputmode="decimal" class="input-amount input-amount--readonly" id="amount-to" placeholder="0" readonly />
+          <select class="select-ccy" id="ccy-to" aria-label="目標幣別"></select>
+        </div>
+        <p class="rate-note" id="rate-note"></p>
+        <button type="button" class="btn btn--primary btn--pill btn--convert" id="btn-convert">轉換</button>
+      </section>
+    </main>
+
+    <!-- 記帳 -->
+    <main id="view-ledger" class="view hidden" aria-hidden="true">
+      <header class="header header--ledger">
+        <button type="button" class="btn-month" id="btn-month-prev" aria-label="上一個月">‹</button>
+        <button type="button" class="month-block month-block--btn" id="ledger-month-open" aria-label="選擇年月">
+          <span id="ledger-month-label" class="month-block__text">2026年4月</span>
+        </button>
+        <button type="button" class="btn-month" id="btn-month-next" aria-label="下一個月">›</button>
+      </header>
+      <input type="month" id="ledger-month-input" class="visually-hidden" lang="zh-Hant" />
+
+      <section class="ledger-summary">
+        <div class="ledger-summary__main">
+          <span class="ledger-summary__label">總花費</span>
+          <span class="ledger-summary__value" id="total-spend">0</span>
+        </div>
+      </section>
+
+      <div class="ledger-list" id="ledger-list"></div>
+
+      <button type="button" class="fab" id="fab-add" aria-label="新增花費">+</button>
+    </main>
+
+    <!-- 輸入單筆花費（全螢幕覆蓋） -->
+    <div id="overlay-expense" class="overlay hidden" aria-hidden="true">
+      <header class="expense-header">
+        <button type="button" class="expense-back" id="expense-close" aria-label="返回">←</button>
+        <span class="expense-header__title">新增花費</span>
+        <span class="expense-header__spacer"></span>
+      </header>
+
+      <div class="expense-categories" id="expense-categories"></div>
+
+      <div class="expense-keypad-wrap">
+        <div class="expense-input-bar">
+          <input type="text" class="expense-note" id="expense-note" placeholder="請輸入備註" maxlength="80" />
+          <span class="expense-amount-display" id="expense-amount-display">$ 0</span>
+        </div>
+
+        <div class="expense-date-row">
+          <button type="button" class="expense-date-row__nav" id="expense-date-prev" aria-label="前一天">‹</button>
+          <button type="button" class="expense-date-row__center" id="expense-date-open">今日 2026/04/03</button>
+          <button type="button" class="expense-date-row__nav" id="expense-date-next" aria-label="後一天">›</button>
+        </div>
+        <input type="date" id="expense-date-input" class="visually-hidden" />
+
+        <div class="keypad" id="keypad"></div>
+      </div>
+    </div>
+
+    <nav class="bottom-nav" role="navigation">
+      <button type="button" class="bottom-nav__item is-active" data-view="rate">
+        <span class="bottom-nav__icon">⇄</span>
+        <span class="bottom-nav__label">匯率換算</span>
+      </button>
+      <button type="button" class="bottom-nav__item" data-view="ledger">
+        <span class="bottom-nav__icon">☰</span>
+        <span class="bottom-nav__label">記帳</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
