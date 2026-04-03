@@ -85,6 +85,113 @@
     localStorage.setItem(STORAGE_EXPENSES, JSON.stringify(list));
   }
 
+  function expenseSame(x, entry) {
+    if (entry.id != null) return x.id === entry.id;
+    return (
+      x.date === entry.date &&
+      (x.category || "") === (entry.category || "") &&
+      Number(x.amount) === Number(entry.amount) &&
+      (x.note || "") === (entry.note || "")
+    );
+  }
+
+  function deleteExpenseEntry(entry) {
+    if (!window.confirm("確定要刪除這筆花費？")) return;
+    const list = loadExpenses();
+    const next = list.filter((x) => !expenseSame(x, entry));
+    if (next.length === list.length) return;
+    saveExpenses(next);
+    renderLedger();
+  }
+
+  const LEDGER_SWIPE_PX = 72;
+
+  function closeOtherLedgerSwipes(exceptWrap) {
+    document.querySelectorAll(".ledger-swipe.is-open").forEach((w) => {
+      if (w === exceptWrap) return;
+      w.classList.remove("is-open");
+      const f = w.querySelector(".ledger-swipe__front");
+      if (f) {
+        f.style.transition = "transform 0.2s ease";
+        f.style.transform = "translateX(0)";
+      }
+    });
+  }
+
+  function bindLedgerSwipe(wrap, front, entry) {
+    const SW = LEDGER_SWIPE_PX;
+    const delBtn = wrap.querySelector(".ledger-swipe__del");
+    let lastTx = 0;
+    let touchActive = false;
+    let startX = 0;
+    let startY = 0;
+    let startOffset = 0;
+    let lockHoriz = false;
+
+    /** offset 0…SW：向左滑露出的寬度，前景 translateX(-offset) */
+    function applyTx(offset, instant) {
+      const t = Math.max(0, Math.min(SW, offset));
+      lastTx = t;
+      front.style.transition = instant ? "none" : "transform 0.2s ease";
+      front.style.transform = "translateX(" + -t + "px)";
+      if (t >= SW / 2) wrap.classList.add("is-open");
+      else wrap.classList.remove("is-open");
+    }
+
+    front.addEventListener(
+      "touchstart",
+      (ev) => {
+        touchActive = true;
+        startX = ev.touches[0].clientX;
+        startY = ev.touches[0].clientY;
+        startOffset = wrap.classList.contains("is-open") ? SW : 0;
+        lastTx = startOffset;
+        lockHoriz = false;
+        closeOtherLedgerSwipes(wrap);
+        front.style.transition = "none";
+      },
+      { passive: true }
+    );
+
+    front.addEventListener(
+      "touchmove",
+      (ev) => {
+        if (!touchActive) return;
+        const x = ev.touches[0].clientX;
+        const y = ev.touches[0].clientY;
+        const dx = x - startX;
+        const dy = y - startY;
+        if (!lockHoriz) {
+          if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+            lockHoriz = true;
+          } else if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+            touchActive = false;
+            return;
+          }
+        }
+        if (!lockHoriz) return;
+        ev.preventDefault();
+        applyTx(startOffset - dx, true);
+      },
+      { passive: false }
+    );
+
+    function endTouch() {
+      if (!touchActive) return;
+      touchActive = false;
+      lockHoriz = false;
+      applyTx(lastTx > SW / 2 ? SW : 0, false);
+    }
+
+    front.addEventListener("touchend", endTouch);
+    front.addEventListener("touchcancel", endTouch);
+
+    delBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      deleteExpenseEntry(entry);
+    });
+  }
+
   function loadCategories() {
     try {
       const raw = localStorage.getItem(STORAGE_CATEGORIES);
@@ -360,9 +467,21 @@
       section.appendChild(head);
 
       items.forEach((e) => {
-        const row = document.createElement("div");
-        row.className = "ledger-item";
-        row.innerHTML =
+        const wrap = document.createElement("div");
+        wrap.className = "ledger-swipe";
+
+        const behind = document.createElement("div");
+        behind.className = "ledger-swipe__behind";
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "ledger-swipe__del";
+        delBtn.textContent = "刪除";
+        delBtn.setAttribute("aria-label", "刪除此筆花費");
+        behind.appendChild(delBtn);
+
+        const front = document.createElement("div");
+        front.className = "ledger-swipe__front ledger-item";
+        front.innerHTML =
           '<div class="ledger-item__icon"></div>' +
           '<div class="ledger-item__meta">' +
           '<div class="ledger-item__cat"></div>' +
@@ -371,10 +490,14 @@
           '<div class="ledger-item__amt">$-' +
           formatMoney(e.amount) +
           "</div>";
-        row.querySelector(".ledger-item__icon").innerHTML = getCategoryIconHtml(e.category);
-        row.querySelector(".ledger-item__cat").textContent = e.category || "";
-        row.querySelector(".ledger-item__note").textContent = e.note || "";
-        section.appendChild(row);
+        front.querySelector(".ledger-item__icon").innerHTML = getCategoryIconHtml(e.category);
+        front.querySelector(".ledger-item__cat").textContent = e.category || "";
+        front.querySelector(".ledger-item__note").textContent = e.note || "";
+
+        wrap.appendChild(behind);
+        wrap.appendChild(front);
+        bindLedgerSwipe(wrap, front, e);
+        section.appendChild(wrap);
       });
 
       list.appendChild(section);
